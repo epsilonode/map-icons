@@ -10,7 +10,7 @@ A collection of SVG and PNG icons for map and UI applications.
 
 ## Usage
 
-Browse the [interactive viewer](icons/index.html) to search and copy icon names.
+Browse the [interactive viewer](https://raw.githack.com/epsilonode/map-icons/master/icons/index.html) to search and copy icon names.
 
 Icons are provided in SVG and PNG formats for use in your projects.
 

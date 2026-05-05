@@ -1,8 +1,12 @@
-﻿# Map UI Icon Pack
+# Map UI Icon Pack
 
 Total icons: 260
 
-Click icon names to copy. Use the [interactive viewer](index.html) for search and filtering.
+## Interactive Viewer
+
+**[Open Interactive Viewer](https://raw.githack.com/epsilonode/map-icons/master/icons/index.html)** - Search, filter, and copy icon names
+
+## Icons
 
 <table>
 <tr>
