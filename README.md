@@ -2,13 +2,17 @@
 
 A collection of SVG and PNG icons for map and UI applications.
 
-## Icons
+## Structure
 
-This pack includes a variety of icons sourced from Material Design, Remix Icon, and custom designs, suitable for mapping and UI interfaces.
+- `icons/` - Contains all icon files and the interactive viewer
+  - `index.html` - Interactive icon viewer with search and filtering
+  - `*.svg` / `*.png` - Icon files
 
 ## Usage
 
-Simply copy the icon files you need into your project. Icons are provided in SVG and PNG formats.
+Browse the [interactive viewer](icons/index.html) to search and copy icon names.
+
+Icons are provided in SVG and PNG formats for use in your projects.
 
 ## License
 
