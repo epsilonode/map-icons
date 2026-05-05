@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MapTiler Weather - Precipitation</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@maptiler/sdk@3.5.0/dist/maptiler-sdk.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace; background: #0a0a0a; }
+        #map { width: 100vw; height: 100vh; }
+        
+        #hud {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            z-index: 10;
+            background: rgba(10, 10, 14, 0.88);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            padding: 14px 18px;
+            color: #e0e0e0;
+            min-width: 220px;
+        }
+        
+        #hud .info {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        #hud .row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+        }
+        
+        #hud .label { color: #666; }
+        #hud .value { color: #fff; font-weight: 600; }
+        
+        #hud .legend {
+            margin-top: 12px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255,255,255,0.06);
+        }
+        
+        #hud .legend-title {
+            font-size: 10px;
+            letter-spacing: 0.6px;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+        
+        .legend-bar {
+            height: 12px;
+            border-radius: 2px;
+            background: linear-gradient(to right, 
+                #6e9af0 0%, 
+                #4ca8e8 20%, 
+                #4dcb78 40%, 
+                #f5d742 60%, 
+                #f58742 80%, 
+                #e84646 100%
+            );
+            margin-bottom: 4px;
+        }
+        
+        .legend-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            color: #666;
+        }
+
+        .time-row {
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255,255,255,0.06);
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #666;
+        }
+
+        #hud .time-row .label,
+        #hud .time-row .value { color: #666; font-weight: 500; }
+
+        .maplibregl-ctrl-logo,
+        .maplibregl-ctrl-attrib,
+        .maplibregl-compact,
+        .maptiler-ctrl-logo,
+        a[aria-label="MapTiler logo"] { display: none !important; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <div id="hud">
+        <div class="info">
+            <div class="row">
+                <span class="label">Precipitation</span>
+                <span class="value" id="precip">-- mm/h</span>
+            </div>
+            <div class="row">
+                <span class="label">Ocean on Top</span>
+                <span class="value"><input id="oceanTop" type="checkbox"></span>
+            </div>
+        </div>
+        <div class="legend">
+            <div class="legend-title">Precipitation Rate (mm/hr)</div>
+            <div class="legend-bar"></div>
+            <div class="legend-labels">
+                <span>0</span>
+                <span>10</span>
+                <span>50+</span>
+            </div>
+            <div class="time-row">
+                <span class="label">Model VT:</span>
+                <span class="value" id="time">--</span>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import * as maptilersdk from 'https://cdn.jsdelivr.net/npm/@maptiler/sdk@3.5.0/+esm';
+        import * as weather from 'https://cdn.jsdelivr.net/npm/@maptiler/weather@3.1.1/+esm';
+
+        const API_KEY = "yLsBqBToRCyNaodfNrIE";
+
+        maptilersdk.config.apiKey = API_KEY;
+
+        const map = new maptilersdk.Map({
+            container: "map",
+            style: maptilersdk.MapStyle.DATAVIZ.DARK,
+            center: [0, 15],
+            zoom: 1.6,
+            maptilerLogo: false
+        });
+
+        const precipEl = document.getElementById("precip");
+        const timeEl = document.getElementById("time");
+        const oceanTopEl = document.getElementById("oceanTop");
+
+        const weatherMetaUrl = `https://api.maptiler.com/weather/latest.json?key=${API_KEY}&mtsid=diag`;
+
+        async function diagnoseWeatherApi() {
+            const response = await fetch(weatherMetaUrl, { cache: "no-store" });
+            if (!response.ok) {
+                throw new Error(`Metadata request failed: HTTP ${response.status}`);
+            }
+            const payload = await response.json();
+            const precipMeta = payload.variables?.find(
+                (v) => v.metadata?.weather_variable?.variable_id === "precipitation-1h:gfs"
+            );
+            if (!precipMeta) {
+                throw new Error("precipitation-1h:gfs missing from metadata");
+            }
+            console.log("[diag] Precip metadata:", {
+                keyframes: precipMeta.keyframes?.length,
+                format: precipMeta.tile_format,
+                firstTileId: precipMeta.keyframes?.[0]?.id
+            });
+        }
+
+        let precipLayer = null;
+        let sourceReady = false;
+
+        function updateCurrentTime() {
+            if (!precipLayer || !sourceReady) return;
+            const stamp = precipLayer.getAnimationTime();
+            if (!stamp) return;
+            const iso = new Date(stamp * 1000).toISOString();
+            timeEl.textContent = `${iso.slice(5, 16)}Z`;
+        }
+
+        function findFirstLayerId(testFn) {
+            const layers = map.getStyle()?.layers || [];
+            const match = layers.find((layer) => layer?.id && testFn(layer));
+            return match?.id || null;
+        }
+
+        function findOceanLayerId() {
+            return findFirstLayerId((layer) => layer.type === "fill" && /water/i.test(layer.id))
+                || findFirstLayerId((layer) => /water/i.test(layer.id));
+        }
+
+        function findLandLayerId() {
+            return findFirstLayerId((layer) => {
+                const id = layer.id || "";
+                return (layer.type === "fill" || layer.type === "background")
+                    && /(land|landcover|landuse|terrain|hillshade|vegetation|park)/i.test(id);
+            }) || findFirstLayerId((layer) => /(land|landcover|landuse)/i.test(layer.id || ""));
+        }
+
+        function setPrecipPlacement(mode) {
+            if (!precipLayer) return;
+            const hasLayer = !!map.getLayer("precipitation");
+
+            let beforeId = null;
+            if (mode === "ocean") beforeId = findOceanLayerId();
+            if (mode === "land") beforeId = findLandLayerId();
+
+            if (hasLayer) {
+                try {
+                    map.moveLayer("precipitation", beforeId || void 0);
+                    return;
+                } catch (_err) {
+                    console.warn("[diag] moveLayer failed; trying addLayer fallback.");
+                }
+            }
+
+            if (beforeId) {
+                try {
+                    map.addLayer(precipLayer, beforeId);
+                    return;
+                } catch (_err) {
+                    console.warn(`[diag] Could not insert before ${beforeId}; adding on top.`);
+                }
+            }
+
+            map.addLayer(precipLayer);
+        }
+
+        map.on("load", async () => {
+            try {
+                console.log("[diag] weather exports:", Object.keys(weather));
+                await diagnoseWeatherApi();
+
+                precipLayer = new weather.PrecipitationLayer({
+                    id: "precipitation",
+                    opacity: 0.7
+                });
+
+                setPrecipPlacement("top");
+
+                precipLayer.on("sourceReady", () => {
+                    sourceReady = true;
+                    updateCurrentTime();
+                });
+
+                precipLayer.on("tick", () => {
+                    updateCurrentTime();
+                });
+
+                await precipLayer.onSourceReadyAsync();
+                console.log("[diag] Source fully ready.");
+            } catch (err) {
+                console.error("[diag] Setup failed:", err);
+                precipEl.textContent = "Init failed";
+            }
+        });
+
+        oceanTopEl.addEventListener("change", () => {
+            if (oceanTopEl.checked) {
+                setPrecipPlacement("ocean");
+            } else {
+                // default top when not checked
+                setPrecipPlacement("top");
+            }
+        });
+
+        map.on("mousemove", (e) => {
+            if (!precipLayer || !sourceReady) {
+                precipEl.textContent = "Loading...";
+                return;
+            }
+
+            try {
+                const { lng, lat } = e.lngLat;
+                const result = precipLayer.pickAt(lng, lat);
+                precipEl.textContent = result?.value != null ? `${result.value.toFixed(1)} mm/h` : "0.0 mm/h";
+            } catch (err) {
+                console.error("[diag] pickAt failed:", err);
+                precipEl.textContent = "N/A";
+            }
+        });
+
+        map.on("error", (e) => {
+            console.error("[diag] Map error:", e.error?.message || e);
+        });
+    </script>
+</body>
+</html>

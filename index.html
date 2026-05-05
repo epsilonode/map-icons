@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Icon Pack</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #111;
+      color: #e3e3e3;
+      font-family: system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: #111;
+      border-bottom: 1px solid #2a2a2a;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    h1 {
+      font-size: 15px;
+      font-weight: 600;
+      color: #e3e3e3;
+      white-space: nowrap;
+    }
+
+    #search {
+      flex: 1;
+      min-width: 200px;
+      background: #1e1e1e;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #e3e3e3;
+      font-size: 13px;
+      padding: 7px 12px;
+      outline: none;
+    }
+    #search:focus { border-color: #555; }
+    #search::placeholder { color: #666; }
+
+    .filters {
+      display: flex;
+      gap: 6px;
+    }
+
+    .filter-btn {
+      background: #1e1e1e;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #999;
+      font-size: 12px;
+      padding: 6px 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .filter-btn:hover { border-color: #555; color: #ccc; }
+    .filter-btn.active { background: #2a2a2a; border-color: #555; color: #e3e3e3; }
+
+    #count {
+      font-size: 12px;
+      color: #555;
+      white-space: nowrap;
+    }
+
+    main {
+      padding: 20px;
+    }
+
+    #grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+      gap: 8px;
+    }
+
+    .icon-card {
+      background: #1a1a1a;
+      border: 1px solid #222;
+      border-radius: 8px;
+      padding: 14px 8px 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: background 0.1s, border-color 0.1s;
+      position: relative;
+      min-height: 88px;
+    }
+    .icon-card:hover { background: #222; border-color: #333; }
+    .icon-card.copied { border-color: #4caf50; }
+
+    .icon-card img {
+      width: 32px;
+      height: 32px;
+      object-fit: contain;
+      filter: brightness(0) invert(1);
+    }
+
+    .icon-card .name {
+      font-size: 10px;
+      color: #666;
+      text-align: center;
+      line-height: 1.3;
+      word-break: break-all;
+      max-width: 100%;
+    }
+
+    .icon-card .badge {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      font-size: 9px;
+      color: #444;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+    }
+    .icon-card .badge.png { color: #7a5;  }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(12px);
+      background: #2a2a2a;
+      border: 1px solid #3a3a3a;
+      border-radius: 8px;
+      color: #e3e3e3;
+      font-size: 13px;
+      padding: 9px 18px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s, transform 0.2s;
+      z-index: 100;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    #no-results {
+      display: none;
+      text-align: center;
+      color: #444;
+      font-size: 14px;
+      padding: 60px 0;
+    }
+    #no-results.visible { display: block; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Icon Pack</h1>
+  <input id="search" type="search" placeholder="Search icons…" autocomplete="off" spellcheck="false">
+  <div class="filters">
+    <button class="filter-btn active" data-filter="all">All</button>
+    <button class="filter-btn" data-filter="svg">SVG</button>
+    <button class="filter-btn" data-filter="png">PNG</button>
+  </div>
+  <span id="count"></span>
+</header>
+
+<main>
+  <div id="grid"></div>
+  <div id="no-results">No icons match your search.</div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const icons = [
+  "acute_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "airlines_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "airplane (1).svg",
+  "airplane.svg",
+  "alert_octagon_line.png",
+  "align-bottom-box.svg",
+  "align-right-box.svg",
+  "anchor.svg",
+  "anchor-simple.svg",
+  "announcement_line.svg",
+  "apps_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "arrows-clockwise.svg",
+  "arrows-in.svg",
+  "arrows-out.svg",
+  "balloon.svg",
+  "barefoot_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "bell.svg",
+  "blaze-line.svg",
+  "blur_circular_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "blur_on_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "bolt_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "box-seam.svg",
+  "browse_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "bubble-chart-fill.svg",
+  "building-2-line.svg",
+  "bulb_2_fill.png",
+  "bulb_2_line.png",
+  "caret-circle-right.svg",
+  "change_history_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "chef_hat_line.svg",
+  "circuitry.svg",
+  "clock-clockwise.svg",
+  "close_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "columns.svg",
+  "columns_3_line.png",
+  "comment_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "compact-disc.svg",
+  "comp-align-bottom.svg",
+  "comp-align-left.svg",
+  "comp-align-right.svg",
+  "comp-align-top.svg",
+  "compasses-2-fill (1).svg",
+  "compasses-2-fill.svg",
+  "compasses-fill.svg",
+  "connecting_airports_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "content_copy_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "contrast-drop-2-line.svg",
+  "cookie.svg",
+  "corner-bottom-left.svg",
+  "corner-bottom-right.svg",
+  "corners-in.svg",
+  "corner-top-left.svg",
+  "corner-top-right.svg",
+  "corporate_fare_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "cyclone_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "dashboard-2-line (1).svg",
+  "dashboard-2-line.svg",
+  "data_usage_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "desk_lamp_2_fill.png",
+  "desk_lamp_2_line.svg",
+  "dna.svg",
+  "donut-chart-fill.svg",
+  "download-simple.svg",
+  "drag-move-line.svg",
+  "dropdown_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "drop-half-bottom.svg",
+  "droplet-half.svg",
+  "dual_screen_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "earth_latitude_line.svg",
+  "earth_longitude_line.svg",
+  "edit_line.svg",
+  "edit-pencil.svg",
+  "emergency_flashers_fill.svg",
+  "emergency_flashers_line.svg",
+  "exclamation-circle.svg",
+  "exclamation-diamond.svg",
+  "eye_2_fill.svg",
+  "eye_2_line.svg",
+  "faders-horizontal.svg",
+  "feather.svg",
+  "file-edit-fill.svg",
+  "fingerprint_2_line.svg",
+  "fingerprint-simple.svg",
+  "fire.svg",
+  "fire_line.svg",
+  "fire-flame.svg",
+  "flag_3_fill.png",
+  "flag_3_line.png",
+  "flag_circle_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "flag-2-line.svg",
+  "flag-pennant.svg",
+  "flame.svg",
+  "flame_fill.svg",
+  "flight_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "flip-horizontal-fill.svg",
+  "flip-vertical-fill.svg",
+  "focus-line.svg",
+  "foot_line.svg",
+  "frame_line.png",
+  "frame-corners.svg",
+  "fullscreen-exit-line.svg",
+  "fullscreen-line.svg",
+  "garage.svg",
+  "gear.svg",
+  "globe.svg",
+  "globe_2_line.svg",
+  "globe_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "globe-line.svg",
+  "gps-fix.svg",
+  "grid_2_fill.svg",
+  "grid_2_line.svg",
+  "hand-deposit.svg",
+  "hand-withdraw.svg",
+  "hardware_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "head-circuit.svg",
+  "hexagon.svg",
+  "hexagon_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "history_2_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "history_anticlockwise_fill.svg",
+  "history_anticlockwise_line.svg",
+  "history_edu_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "home_app_logo_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "hurricane.svg",
+  "iframe_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "info.svg",
+  "info-circle.svg",
+  "insert-column-right.svg",
+  "insert-row-bottom.svg",
+  "island.svg",
+  "jellyfish.svg",
+  "keep_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "key_1_fill.svg",
+  "key_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "key_vertical_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "keyframes.svg",
+  "key-line.svg",
+  "label_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "landslide_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "language_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "laps_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "layer_fill.png",
+  "layer_line.png",
+  "layout.svg",
+  "layout_3_line.svg",
+  "layout_6_fill.svg",
+  "layout-2-line.svg",
+  "layout-column-fill.svg",
+  "layout-column-line.svg",
+  "layout-masonry-fill.svg",
+  "layout-row-fill.svg",
+  "layout-row-line.svg",
+  "leaf-fill.svg",
+  "light-bulb.svg",
+  "lightning.svg",
+  "line_end_square_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "local_fire_department_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "manga_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "map-pin.svg",
+  "map-pin-2-line.svg",
+  "map-pin-line.svg",
+  "map-pin-plus.svg",
+  "map-pin-simple.svg",
+  "measuring_tape_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "menu_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "more_vert_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "multiple_airports_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "notches.svg",
+  "note-pencil.svg",
+  "notification-3-line.svg",
+  "open-new-window.svg",
+  "paper-plane-right.svg",
+  "parachute.svg",
+  "path.svg",
+  "pencil.svg",
+  "picture-in-picture.svg",
+  "picture-in-picture-fill.svg",
+  "picture-in-picture-line.svg",
+  "placeholder.svg",
+  "plane-fill.svg",
+  "planet_line.svg",
+  "play.svg",
+  "plus-circle.svg",
+  "priority-high.svg",
+  "priority-high-solid.svg",
+  "queue.svg",
+  "radar_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "radio_button_checked_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "resize.svg",
+  "rhombus-arrow-right-solid.svg",
+  "rows_3_line.png",
+  "ruler-2-line.svg",
+  "rulers.svg",
+  "sailboat.svg",
+  "sailboat_fill.svg",
+  "sailing_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "satellite_alt_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "scissor.svg",
+  "section_line.png",
+  "send.svg",
+  "send-plane-2-fill.svg",
+  "send-plane-2-line.svg",
+  "share_2_fill.svg",
+  "share-android-solid.svg",
+  "signature_line.png",
+  "siren_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "sliders.svg",
+  "split-horizontal.svg",
+  "split-vertical.svg",
+  "square_foot_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "square-split-horizontal.svg",
+  "square-split-vertical.svg",
+  "stack (1).svg",
+  "stack.svg",
+  "stack-line.svg",
+  "stacks_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "stairs.svg",
+  "star_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "stylus_pencil_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "subscriptions_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "sun-dim.svg",
+  "sync_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "tab_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "target_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "teacup_line.png",
+  "temp-cold-line.svg",
+  "temp-hot-fill.svg",
+  "temp-hot-line.svg",
+  "tent_line.png",
+  "tent-line.svg",
+  "text-box.svg",
+  "thermometer-simple.svg",
+  "tile_small_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "tool_line.svg",
+  "tornado_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "transformation_line.svg",
+  "transition-down.svg",
+  "transition-right.svg",
+  "tray-arrow-down.svg",
+  "triangle.svg",
+  "truck-trailer.svg",
+  "tsunami_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "typhoon_line.svg",
+  "umbrella-fill.svg",
+  "version_line.svg",
+  "view_timeline_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "view-columns2.svg",
+  "view-structure-down.svg",
+  "warning.svg",
+  "warning-circle.svg",
+  "warning-hexagon.svg",
+  "warning-triangle.svg",
+  "water_do_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "water_drop_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "water_drops_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "waves_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "webhook_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "whiteboard_line.png",
+  "world_2_line.svg",
+  "xmark.svg",
+  "xmark-square.svg",
+];
+
+function displayName(filename) {
+  return filename
+    .replace(/_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24/, '')
+    .replace(/\.[^.]+$/, '')
+    .replace(/[-_]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function ext(filename) {
+  return filename.split('.').pop().toLowerCase();
+}
+
+let currentFilter = 'all';
+let currentSearch = '';
+let toastTimer;
+
+function filteredIcons() {
+  return icons.filter(name => {
+    const matchesFilter = currentFilter === 'all' || ext(name) === currentFilter;
+    const matchesSearch = !currentSearch || displayName(name).toLowerCase().includes(currentSearch) || name.toLowerCase().includes(currentSearch);
+    return matchesFilter && matchesSearch;
+  });
+}
+
+function render() {
+  const grid = document.getElementById('grid');
+  const noResults = document.getElementById('no-results');
+  const list = filteredIcons();
+
+  document.getElementById('count').textContent = `${list.length} of ${icons.length}`;
+
+  if (list.length === 0) {
+    grid.innerHTML = '';
+    noResults.classList.add('visible');
+    return;
+  }
+  noResults.classList.remove('visible');
+
+  grid.innerHTML = list.map(name => {
+    const format = ext(name);
+    const label = displayName(name);
+    const src = encodeURIComponent(name).replace(/%20/g, '%20');
+    return `<div class="icon-card" title="${name}" data-name="${name}" onclick="copyName(this, '${name.replace(/'/g, "\\'")}')">
+      <span class="badge ${format}">${format.toUpperCase()}</span>
+      <img src="${src}" alt="${label}" loading="lazy">
+      <span class="name">${label}</span>
+    </div>`;
+  }).join('');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+function copyName(card, name) {
+  navigator.clipboard.writeText(name).then(() => {
+    card.classList.add('copied');
+    setTimeout(() => card.classList.remove('copied'), 1000);
+    showToast(`Copied: ${name}`);
+  });
+}
+
+document.getElementById('search').addEventListener('input', e => {
+  currentSearch = e.target.value.toLowerCase().trim();
+  render();
+});
+
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    currentFilter = btn.dataset.filter;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    render();
+  });
+});
+
+render();
+</script>
+</body>
+</html>
